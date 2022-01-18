@@ -1,7 +1,6 @@
 import pygame
 import Board
 
-# implement buttons
 # implement ai
 
 pygame.init()
