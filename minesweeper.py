@@ -1,310 +1,430 @@
+import neat.nn
 import pygame
 import Board
 
+
 # implement ai
 
-pygame.init()
+class game:
 
-backgroundColor = (200, 200, 200)
+    def __init__(self):
+        pygame.init()
 
-cols = 4
-rows = 4
-bombs = 2
+        self.backgroundColor = (200, 200, 200)
 
-difficultySettings = {
-    'easy': (10, 8, 10),
-    'medium': (18, 14, 40),
-    'hard': (24, 20, 99),
-    'custom': (cols, rows, bombs)
-}
+        self.cols = 4
+        self.rows = 4
+        self.bombs = 2
 
-difficulty = 'custom'
+        self.difficultySettings = {
+            'easy': (10, 8, 10),
+            'medium': (18, 14, 40),
+            'hard': (24, 20, 99),
+            'custom': (self.cols, self.rows, self.bombs)
+        }
 
-width = 1920
-height = 1080
-gridSize = (width / cols, height / rows)
+        self.difficulty = 'custom'
 
-buttonWidth = 300
-buttonHeight = height / 6
-distBetweenButtons = (height - 3 * buttonHeight) / 3
-center = (width / 2, height / 2)
+        self.width = 1920
+        self.height = 1080
+        self.gridSize = (self.width / self.cols, self.height / self.rows)
 
-screen = pygame.display.set_mode((width, height))
-pygame.display.set_caption("Minesweeper")
-icon = pygame.image.load('minesweeper.png')
-pygame.display.set_icon(icon)
-font = pygame.font.SysFont('rockwellextra', 32)
+        self.buttonWidth = 300
+        self.buttonHeight = self.height / 6
+        self.distBetweenButtons = (self.height - 3 * self.buttonHeight) / 3
+        self.center = (self.width / 2, self.height / 2)
 
-imageTileOffset = {
-    'unopened': (0, 0),
-    'flag': (1, 0),
-    -1: (2, 0),
-    0: (3, 0),
-    1: (0, 1),
-    2: (1, 1),
-    3: (2, 1),
-    4: (3, 1),
-    5: (0, 2),
-    6: (1, 2),
-    7: (2, 2),
-    8: (3, 2)
-}
-tiles = pygame.image.load('minesweeper_tiles.jpg')
+        self.screen = pygame.display.set_mode((self.width, self.height))
+        pygame.display.set_caption("Minesweeper")
+        self.icon = pygame.image.load('minesweeper.png')
+        pygame.display.set_icon(self.icon)
+        self.font = pygame.font.SysFont('rockwellextra', 32)
 
-board = Board.Board(cols, rows, bombs)
+        self.imageTileOffset = {
+            'unopened': (0, 0),
+            'flag': (1, 0),
+            -1: (2, 0),
+            0: (3, 0),
+            1: (0, 1),
+            2: (1, 1),
+            3: (2, 1),
+            4: (3, 1),
+            5: (0, 2),
+            6: (1, 2),
+            7: (2, 2),
+            8: (3, 2)
+        }
+        self.tiles = pygame.image.load('minesweeper_tiles.jpg')
 
-exit = False
-running = False
-pause = False
-endgame = False
-settings = False
+        self.board = Board.Board(self.cols, self.rows, self.bombs)
 
+        self.exit = False
+        self.running = False
+        self.pause = False
+        self.endgame = False
+        self.settings = False
 
-def displayBoard(board):
-    surface = pygame.Surface((128, 128))
-    for i in range(board.height):
-        for j in range(board.width):
-            if board.board[i][j].revealed:
-                offset = imageTileOffset[board.board[i][j].nearbyBombs]
-            elif board.board[i][j].flagged:
-                offset = imageTileOffset['flag']
-            else:
-                offset = imageTileOffset['unopened']
-            surface.blit(tiles, (0, 0), (128 * offset[0], 128 * offset[1], 128, 128))
-            scaledSurface = pygame.transform.scale(surface, (gridSize[0], gridSize[1]))
-            screen.blit(scaledSurface, (gridSize[0] * j, gridSize[1] * i))
+    def displayBoard(self, board):
+        surface = pygame.Surface((128, 128))
+        for i in range(self.board.height):
+            for j in range(self.board.width):
+                if self.board.board[i][j].revealed:
+                    offset = self.imageTileOffset[self.board.board[i][j].nearbyBombs]
+                elif self.board.board[i][j].flagged:
+                    offset = self.imageTileOffset['flag']
+                else:
+                    offset = self.imageTileOffset['unopened']
+                surface.blit(self.tiles, (0, 0), (128 * offset[0], 128 * offset[1], 128, 128))
+                scaledSurface = pygame.transform.scale(surface, (self.gridSize[0], self.gridSize[1]))
+                self.screen.blit(scaledSurface, (self.gridSize[0] * j, self.gridSize[1] * i))
 
+    def displayMenu(self):
+        color = (0, 0, 0)
+        self.screen.fill(self.backgroundColor)
+        play = pygame.Rect(self.center[0] - self.buttonWidth / 2,
+                           self.center[1] - self.buttonHeight / 2 - (self.buttonHeight + self.distBetweenButtons),
+                           self.buttonWidth, self.buttonHeight)
+        settings = pygame.Rect(self.center[0] - self.buttonWidth / 2, self.center[1] - self.buttonHeight / 2,
+                               self.buttonWidth, self.buttonHeight)
+        exit = pygame.Rect(self.center[0] - self.buttonWidth / 2,
+                           self.center[1] - self.buttonHeight / 2 + (self.buttonHeight + self.distBetweenButtons),
+                           self.buttonWidth, self.buttonHeight)
+        pygame.draw.rect(self.screen, color, play, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        pygame.draw.rect(self.screen, color, settings, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        pygame.draw.rect(self.screen, color, exit, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        playText = self.font.render('Play', True, (255, 0, 0), (255, 255, 255))
+        playTextRect = playText.get_rect()
+        playTextRect.center = (self.center[0], self.center[1] - (self.buttonHeight + self.distBetweenButtons))
+        settingsText = self.font.render('Difficulty', True, (255, 0, 0), (255, 255, 255))
+        settingsTextRect = settingsText.get_rect()
+        settingsTextRect.center = (self.center[0], self.center[1])
+        exitText = self.font.render('Exit', True, (255, 0, 0), (255, 255, 255))
+        exitTextRect = exitText.get_rect()
+        exitTextRect.center = (self.center[0], self.center[1] + (self.buttonHeight + self.distBetweenButtons))
+        self.screen.blit(playText, playTextRect)
+        self.screen.blit(settingsText, settingsTextRect)
+        self.screen.blit(exitText, exitTextRect)
 
-def displayMenu():
-    color = (0, 0, 0)
-    screen.fill(backgroundColor)
-    play = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2 - (buttonHeight + distBetweenButtons),
-                       buttonWidth, buttonHeight)
-    settings = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2, buttonWidth, buttonHeight)
-    exit = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2 + (buttonHeight + distBetweenButtons),
-                       buttonWidth, buttonHeight)
-    pygame.draw.rect(screen, color, play, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    pygame.draw.rect(screen, color, settings, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    pygame.draw.rect(screen, color, exit, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    playText = font.render('Play', True, (255, 0, 0), (255, 255, 255))
-    playTextRect = playText.get_rect()
-    playTextRect.center = (center[0], center[1] - (buttonHeight + distBetweenButtons))
-    settingsText = font.render('Difficulty', True, (255, 0, 0), (255, 255, 255))
-    settingsTextRect = settingsText.get_rect()
-    settingsTextRect.center = (center[0], center[1])
-    exitText = font.render('Exit', True, (255, 0, 0), (255, 255, 255))
-    exitTextRect = exitText.get_rect()
-    exitTextRect.center = (center[0], center[1] + (buttonHeight + distBetweenButtons))
-    screen.blit(playText, playTextRect)
-    screen.blit(settingsText, settingsTextRect)
-    screen.blit(exitText, exitTextRect)
+    def displaySettings(self):
+        color = (0, 0, 0)
+        self.screen.fill(self.backgroundColor)
+        play = pygame.Rect(self.center[0] - self.buttonWidth / 2,
+                           self.center[1] - self.buttonHeight / 2 - (self.buttonHeight + self.distBetweenButtons),
+                           self.buttonWidth, self.buttonHeight)
+        settings = pygame.Rect(self.center[0] - self.buttonWidth / 2, self.center[1] - self.buttonHeight / 2,
+                               self.buttonWidth, self.buttonHeight)
+        exit = pygame.Rect(self.center[0] - self.buttonWidth / 2,
+                           self.center[1] - self.buttonHeight / 2 + (self.buttonHeight + self.distBetweenButtons),
+                           self.buttonWidth, self.buttonHeight)
+        pygame.draw.rect(self.screen, color, play, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        pygame.draw.rect(self.screen, color, settings, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        pygame.draw.rect(self.screen, color, exit, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        playText = self.font.render('Easy', True, (255, 0, 0), (255, 255, 255))
+        playTextRect = playText.get_rect()
+        playTextRect.center = (self.center[0], self.center[1] - (self.buttonHeight + self.distBetweenButtons))
+        settingsText = self.font.render('Medium', True, (255, 0, 0), (255, 255, 255))
+        settingsTextRect = settingsText.get_rect()
+        settingsTextRect.center = (self.center[0], self.center[1])
+        exitText = self.font.render('Hard', True, (255, 0, 0), (255, 255, 255))
+        exitTextRect = exitText.get_rect()
+        exitTextRect.center = (self.center[0], self.center[1] + (self.buttonHeight + self.distBetweenButtons))
+        self.screen.blit(playText, playTextRect)
+        self.screen.blit(settingsText, settingsTextRect)
+        self.screen.blit(exitText, exitTextRect)
 
+    def displayPause(self):
+        color = (0, 0, 0)
+        play = pygame.Rect(self.center[0] - self.buttonWidth / 2,
+                           self.center[1] - self.buttonHeight / 2 - (self.buttonHeight + self.distBetweenButtons),
+                           self.buttonWidth, self.buttonHeight)
+        settings = pygame.Rect(self.center[0] - self.buttonWidth / 2, self.center[1] - self.buttonHeight / 2,
+                               self.buttonWidth, self.buttonHeight)
+        exit = pygame.Rect(self.center[0] - self.buttonWidth / 2,
+                           self.center[1] - self.buttonHeight / 2 + (self.buttonHeight + self.distBetweenButtons),
+                           self.buttonWidth, self.buttonHeight)
+        pygame.draw.rect(self.screen, color, play, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        pygame.draw.rect(self.screen, color, settings, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        pygame.draw.rect(self.screen, color, exit, border_top_left_radius=10, border_bottom_right_radius=10,
+                         border_top_right_radius=10, border_bottom_left_radius=10)
+        playText = self.font.render('Resume', True, (255, 0, 0), (255, 255, 255))
+        playTextRect = playText.get_rect()
+        playTextRect.self.center = (self.center[0], self.center[1] - (self.buttonHeight + self.distBetweenButtons))
+        settingsText = self.font.render('Restart', True, (255, 0, 0), (255, 255, 255))
+        settingsTextRect = settingsText.get_rect()
+        settingsTextRect.self.center = (self.center[0], self.center[1])
+        exitText = self.font.render('Back To Menu', True, (255, 0, 0), (255, 255, 255))
+        exitTextRect = exitText.get_rect()
+        exitTextRect.self.center = (self.center[0], self.center[1] + (self.buttonHeight + self.distBetweenButtons))
+        self.screen.blit(playText, playTextRect)
+        self.screen.blit(settingsText, settingsTextRect)
+        self.screen.blit(exitText, exitTextRect)
 
-def displaySettings():
-    color = (0, 0, 0)
-    screen.fill(backgroundColor)
-    play = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2 - (buttonHeight + distBetweenButtons),
-                       buttonWidth, buttonHeight)
-    settings = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2, buttonWidth, buttonHeight)
-    exit = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2 + (buttonHeight + distBetweenButtons),
-                       buttonWidth, buttonHeight)
-    pygame.draw.rect(screen, color, play, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    pygame.draw.rect(screen, color, settings, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    pygame.draw.rect(screen, color, exit, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    playText = font.render('Easy', True, (255, 0, 0), (255, 255, 255))
-    playTextRect = playText.get_rect()
-    playTextRect.center = (center[0], center[1] - (buttonHeight + distBetweenButtons))
-    settingsText = font.render('Medium', True, (255, 0, 0), (255, 255, 255))
-    settingsTextRect = settingsText.get_rect()
-    settingsTextRect.center = (center[0], center[1])
-    exitText = font.render('Hard', True, (255, 0, 0), (255, 255, 255))
-    exitTextRect = exitText.get_rect()
-    exitTextRect.center = (center[0], center[1] + (buttonHeight + distBetweenButtons))
-    screen.blit(playText, playTextRect)
-    screen.blit(settingsText, settingsTextRect)
-    screen.blit(exitText, exitTextRect)
+    def displayEndgame(self, win):
+        gameOverText = self.font.render('Game Over', True, (255, 0, 0), (255, 255, 255))
+        gameOverTextRect = gameOverText.get_rect()
+        gameOverTextRect.center = (self.center[0], self.center[1] - (self.buttonHeight + self.distBetweenButtons))
+        winLossText = self.font.render('You Win!' if win else 'You Lose', True, (255, 0, 0), (255, 255, 255))
+        winLossTextRect = winLossText.get_rect()
+        winLossTextRect.center = (self.center[0], self.center[1])
+        exitText = self.font.render('Back To Menu', True, (255, 0, 0), (255, 255, 255))
+        exitTextRect = exitText.get_rect()
+        exitTextRect.center = (self.center[0], self.center[1] + (self.buttonHeight + self.distBetweenButtons))
+        self.screen.blit(gameOverText, gameOverTextRect)
+        self.screen.blit(winLossText, winLossTextRect)
+        self.screen.blit(exitText, exitTextRect)
 
+    def displayBombs(self, board):
+        surface = pygame.Surface((128, 128))
+        for i in range(self.board.height):
+            for j in range(self.board.width):
+                if self.board.board[i][j].revealed:
+                    offset = self.imageTileOffset[self.board.board[i][j].nearbyBombs]
+                elif self.board.board[i][j].flagged:
+                    offset = self.imageTileOffset['flag']
+                else:
+                    offset = self.imageTileOffset['unopened']
+                if self.board.board[i][j].bomb:
+                    offset = self.imageTileOffset[-1]
+                surface.blit(self.tiles, (0, 0), (128 * offset[0], 128 * offset[1], 128, 128))
+                scaledSurface = pygame.transform.scale(surface, (self.gridSize[0], self.gridSize[1]))
+                self.screen.blit(scaledSurface, (self.gridSize[0] * j, self.gridSize[1] * i))
 
-def displayPause():
-    color = (0, 0, 0)
-    play = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2 - (buttonHeight + distBetweenButtons),
-                       buttonWidth, buttonHeight)
-    settings = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2, buttonWidth, buttonHeight)
-    exit = pygame.Rect(center[0] - buttonWidth / 2, center[1] - buttonHeight / 2 + (buttonHeight + distBetweenButtons),
-                       buttonWidth, buttonHeight)
-    pygame.draw.rect(screen, color, play, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    pygame.draw.rect(screen, color, settings, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    pygame.draw.rect(screen, color, exit, border_top_left_radius=10, border_bottom_right_radius=10,
-                     border_top_right_radius=10, border_bottom_left_radius=10)
-    playText = font.render('Resume', True, (255, 0, 0), (255, 255, 255))
-    playTextRect = playText.get_rect()
-    playTextRect.center = (center[0], center[1] - (buttonHeight + distBetweenButtons))
-    settingsText = font.render('Restart', True, (255, 0, 0), (255, 255, 255))
-    settingsTextRect = settingsText.get_rect()
-    settingsTextRect.center = (center[0], center[1])
-    exitText = font.render('Back To Menu', True, (255, 0, 0), (255, 255, 255))
-    exitTextRect = exitText.get_rect()
-    exitTextRect.center = (center[0], center[1] + (buttonHeight + distBetweenButtons))
-    screen.blit(playText, playTextRect)
-    screen.blit(settingsText, settingsTextRect)
-    screen.blit(exitText, exitTextRect)
+    def reveal(self, x, y):
+        if self.board.board[y][x].bomb:
+            self.board.board[y][x].revealed = True
+            self.displayBombs(self.board)
+            self.displayEndgame(False)
+            self.endgame = True
+            return False
+        if not self.board.board[y][x].revealed:
+            self.board.board[y][x].revealed = True
+            self.board.cellsLeft -= 1
+            if self.board.board[y][x].nearbyBombs == 0:
+                self.board.revealZeros(x, y)
+            return True
+        return False
 
+    def test_ai(self, genome, config):
+        net = neat.nn.FeedForwardNetwork.create(genome, config)
 
-def displayEndgame(win):
-    gameOverText = font.render('Game Over', True, (255, 0, 0), (255, 255, 255))
-    gameOverTextRect = gameOverText.get_rect()
-    gameOverTextRect.center = (center[0], center[1] - (buttonHeight + distBetweenButtons))
-    winLossText = font.render('You Win!' if win else 'You Lose', True, (255, 0, 0), (255, 255, 255))
-    winLossTextRect = winLossText.get_rect()
-    winLossTextRect.center = (center[0], center[1])
-    exitText = font.render('Back To Menu', True, (255, 0, 0), (255, 255, 255))
-    exitTextRect = exitText.get_rect()
-    exitTextRect.center = (center[0], center[1] + (buttonHeight + distBetweenButtons))
-    screen.blit(gameOverText, gameOverTextRect)
-    screen.blit(winLossText, winLossTextRect)
-    screen.blit(exitText, exitTextRect)
+        run = True
+        while run:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    quit()
 
+            # if not self.pause and not self.endgame:
+            #     self.screen.fill(self.backgroundColor)
+            if self.board.checkWin():
+                print('Winner Winner Chicken Dinner!')
+                break
+            self.displayBoard(self.board)
 
-def displayBombs(board):
-    surface = pygame.Surface((128, 128))
-    for i in range(board.height):
-        for j in range(board.width):
-            if board.board[i][j].revealed:
-                offset = imageTileOffset[board.board[i][j].nearbyBombs]
-            elif board.board[i][j].flagged:
-                offset = imageTileOffset['flag']
-            else:
-                offset = imageTileOffset['unopened']
-            if board.board[i][j].bomb:
-                offset = imageTileOffset[-1]
-            surface.blit(tiles, (0, 0), (128 * offset[0], 128 * offset[1], 128, 128))
-            scaledSurface = pygame.transform.scale(surface, (gridSize[0], gridSize[1]))
-            screen.blit(scaledSurface, (gridSize[0] * j, gridSize[1] * i))
+            input = []
 
+            for row in self.board.board:
+                for cell in row:
+                    input.append((cell.nearbyBombs if not cell.revealed else -1))
 
-while not exit:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            exit = True
-        if event.type == pygame.MOUSEBUTTONDOWN and settings:
-            pos = pygame.mouse.get_pos()
-            if event.button == 1:
-                if center[0] - buttonWidth / 2 <= pos[0] <= center[0] + buttonWidth / 2:
-                    if center[1] - buttonHeight / 2 - (buttonHeight + distBetweenButtons) <= pos[1] \
-                            <= center[1] - buttonHeight / 2 - distBetweenButtons:  # easy
-                        difficulty = 'easy'
-                        gridSize = (
-                        width / difficultySettings[difficulty][0], height / difficultySettings[difficulty][1])
-                        settings = False
-                        break
-                    if center[1] - buttonHeight / 2 <= pos[1] <= center[1] + buttonHeight / 2:  # medium
-                        difficulty = 'medium'
-                        gridSize = (
-                        width / difficultySettings[difficulty][0], height / difficultySettings[difficulty][1])
-                        settings = False
-                        break
-                    if center[1] + buttonHeight / 2 + distBetweenButtons <= pos[1] \
-                            <= center[1] + 3 * buttonHeight / 2 + distBetweenButtons:  # hard
-                        difficulty = 'hard'
-                        gridSize = (
-                        width / difficultySettings[difficulty][0], height / difficultySettings[difficulty][1])
-                        settings = False
-                        break
-        if event.type == pygame.MOUSEBUTTONDOWN and not settings:
-            pos = pygame.mouse.get_pos()
-            if event.button == 1:
-                if center[0] - buttonWidth / 2 <= pos[0] <= center[0] + buttonWidth / 2:
-                    if center[1] - buttonHeight / 2 - (buttonHeight + distBetweenButtons) <= pos[1] \
-                            <= center[1] - buttonHeight / 2 - distBetweenButtons and not settings:  # play
-                        board.randomizeBoard(difficultySettings[difficulty][0], difficultySettings[difficulty][1],
-                                             difficultySettings[difficulty][2])
-                        running = True
-                    if center[1] - buttonHeight / 2 <= pos[1] <= center[1] + buttonHeight / 2:  # settings
-                        print('Settings!')
-                        settings = True
-                        displaySettings()
-                    if center[1] + buttonHeight / 2 + distBetweenButtons <= pos[1] \
-                            <= center[1] + 3 * buttonHeight / 2 + distBetweenButtons and not settings:  # exit
-                        exit = True
+            output = net.activate(input)
+            bomb = not self.reveal(round(self.translate(output[0], 0, 1, 0, 3)),
+                                   round(self.translate(output[1], 0, 1, 0, 3)))
+            if bomb:
+                print('Hit a bomb :(')
+                break
 
-    if settings:
-        displaySettings()
-    if not settings:
-        displayMenu()
-    pygame.display.update()
+            pygame.display.update()
 
-    while running:
-        if not pause and not endgame:
-            screen.fill(backgroundColor)
-        if pause:
-            displayPause()
-        if board.checkWin():
-            endgame = True
-            displayBoard(board)
-            displayEndgame(True)
-        if not pause and not endgame:
-            displayBoard(board)
+    def train_ai(self, genome, config):
+        net = neat.nn.FeedForwardNetwork.create(genome, config)
 
-        pygame.display.update()
+        run = True
+        while run:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    quit()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-                exit = True
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE and not endgame:
-                    pause = not pause
-            if event.type == pygame.MOUSEBUTTONDOWN and not pause and not endgame:
-                pos = pygame.mouse.get_pos()
-                coords = ((int)(pos[0] / gridSize[0]), (int)(pos[1] / gridSize[1]))
-                if event.button == 1:
-                    if not board.board[coords[1]][coords[0]].flagged:
-                        if board.board[coords[1]][coords[0]].bomb:
-                            board.board[coords[1]][coords[0]].revealed = True
-                            displayBombs(board)
-                            displayEndgame(False)
-                            endgame = True
-                        if not board.board[coords[1]][coords[0]].revealed:
-                            board.board[coords[1]][coords[0]].revealed = True
-                            board.cellsLeft -= 1
-                            if board.board[coords[1]][coords[0]].nearbyBombs == 0:
-                                board.revealZeros(coords[0], coords[1])
-                if event.button == 3:
-                    if not board.board[coords[1]][coords[0]].revealed:
-                        if board.board[coords[1]][coords[0]].flagged:
-                            board.board[coords[1]][coords[0]].flagged = not board.board[coords[1]][coords[0]].flagged
-                            board.flags += 1
-                        elif board.flags > 0:
-                            board.board[coords[1]][coords[0]].flagged = not board.board[coords[1]][coords[0]].flagged
-                            board.flags -= 1
-            if event.type == pygame.MOUSEBUTTONDOWN and pause:
-                pos = pygame.mouse.get_pos()
-                if event.button == 1:
-                    if center[0] - buttonWidth / 2 <= pos[0] <= center[0] + buttonWidth / 2:
-                        if center[1] - buttonHeight / 2 - (buttonHeight + distBetweenButtons) <= pos[1] \
-                                <= center[1] - buttonHeight / 2 - distBetweenButtons:  # resume
-                            pause = False
-                        if center[1] - buttonHeight / 2 <= pos[1] <= center[1] + buttonHeight / 2:  # restart
-                            board.randomizeBoard(difficultySettings[difficulty][0], difficultySettings[difficulty][1],
-                                                 difficultySettings[difficulty][2])
-                            pause = False
-                        if center[1] + buttonHeight / 2 + distBetweenButtons <= pos[1] \
-                                <= center[1] + 3 * buttonHeight / 2 + distBetweenButtons:  # back to menu
-                            running = False
-                            pause = False
-            if event.type == pygame.MOUSEBUTTONDOWN and endgame:
-                pos = pygame.mouse.get_pos()
-                if event.button == 1:
-                    if center[0] - buttonWidth / 2 <= pos[0] <= center[0] + buttonWidth / 2:
-                        if center[1] + buttonHeight / 2 + distBetweenButtons <= pos[1] \
-                                <= center[1] + 3 * buttonHeight / 2 + distBetweenButtons:  # back to menu
-                            running = False
-                            endgame = False
+            # if not self.pause and not self.endgame:
+            #     self.screen.fill(self.backgroundColor)
+            if self.board.checkWin():
+                # print('Winner Winner Chicken Dinner!')
+                self.calculate_fitness(genome)
+                break
+            self.displayBoard(self.board)
+
+            input = []
+
+            for row in self.board.board:
+                for cell in row:
+                    input.append((cell.nearbyBombs if not cell.revealed else -1))
+
+            output = net.activate(input)
+            # print(output)
+            # print(round(self.translate(output[0],0,1,0,3)), round(self.translate(output[1],0,1,0,3)))
+            bomb = not self.reveal(round(self.translate(output[0],0,1,0,3)), round(self.translate(output[1],0,1,0,3)))
+            if bomb:
+                # print('Hit a bomb :(')
+                self.calculate_fitness(genome)
+                break
+
+            pygame.display.update()
+
+    def calculate_fitness(self, genome):
+        genome.fitness += (self.board.width * self.board.height - self.board.numBombs) - self.board.cellsLeft #fitness will be the number of cells successfully revealed
+
+    def translate(self, value, leftMin, leftMax, rightMin, rightMax):
+        # Figure out how 'wide' each range is
+        leftSpan = leftMax - leftMin
+        rightSpan = rightMax - rightMin
+
+        # Convert the left range into a 0-1 range (float)
+        valueScaled = float(value - leftMin) / float(leftSpan)
+
+        # Convert the 0-1 range into a value in the right range.
+        return rightMin + (valueScaled * rightSpan)
+
+    def loop(self):
+        while not self.exit:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.exit = True
+                if event.type == pygame.MOUSEBUTTONDOWN and self.settings:  # if we are in the settings and there is an event
+                    pos = pygame.mouse.get_pos()
+                    if event.button == 1:
+                        if self.center[0] - self.buttonWidth / 2 <= pos[0] <= self.center[0] + self.buttonWidth / 2:
+                            if self.center[1] - self.buttonHeight / 2 - (self.buttonHeight + self.distBetweenButtons) <= \
+                                    pos[1] \
+                                    <= self.center[1] - self.buttonHeight / 2 - self.distBetweenButtons:  # easy
+                                self.difficulty = 'easy'
+                                self.gridSize = (
+                                    self.width / self.difficultySettings[self.difficulty][0],
+                                    self.height / self.difficultySettings[self.difficulty][1])
+                                self.settings = False
+                                break
+                            if self.center[1] - self.buttonHeight / 2 <= pos[1] <= self.center[
+                                1] + self.buttonHeight / 2:  # medium
+                                self.difficulty = 'medium'
+                                self.gridSize = (
+                                    self.width / self.difficultySettings[self.difficulty][0],
+                                    self.height / self.difficultySettings[self.difficulty][1])
+                                self.settings = False
+                                break
+                            if self.center[1] + self.buttonHeight / 2 + self.distBetweenButtons <= pos[1] \
+                                    <= self.center[1] + 3 * self.buttonHeight / 2 + self.distBetweenButtons:  # hard
+                                self.difficulty = 'hard'
+                                self.gridSize = (
+                                    self.width / self.difficultySettings[self.difficulty][0],
+                                    self.height / self.difficultySettings[self.difficulty][1])
+                                self.settings = False
+                                break
+                if event.type == pygame.MOUSEBUTTONDOWN and not self.settings:
+                    pos = pygame.mouse.get_pos()
+                    if event.button == 1:
+                        if self.center[0] - self.buttonWidth / 2 <= pos[0] <= self.center[0] + self.buttonWidth / 2:
+                            if self.center[1] - self.buttonHeight / 2 - (self.buttonHeight + self.distBetweenButtons) <= \
+                                    pos[1] \
+                                    <= self.center[
+                                1] - self.buttonHeight / 2 - self.distBetweenButtons and not self.settings:  # play
+                                self.board.randomizeBoard(self.difficultySettings[self.difficulty][0],
+                                                          self.difficultySettings[self.difficulty][1],
+                                                          self.difficultySettings[self.difficulty][2])
+                                self.running = True
+                            if self.center[1] - self.buttonHeight / 2 <= pos[1] <= self.center[
+                                1] + self.buttonHeight / 2:  # self.settings
+                                print('Settings!')
+                                self.settings = True
+                                self.displaySettings()
+                            if self.center[1] + self.buttonHeight / 2 + self.distBetweenButtons <= pos[1] \
+                                    <= self.center[
+                                1] + 3 * self.buttonHeight / 2 + self.distBetweenButtons and not self.settings:  # self.exit
+                                self.exit = True
+
+            if self.settings:
+                self.displaySettings()
+            if not self.settings:
+                self.displayMenu()
+            pygame.display.update()
+
+            while self.running:
+                if not self.pause and not self.endgame:
+                    self.screen.fill(self.backgroundColor)
+                if self.pause:
+                    self.displayPause()
+                if self.board.checkWin():
+                    self.endgame = True
+                    self.displayBoard(self.board)
+                    self.displayEndgame(True)
+                if not self.pause and not self.endgame:
+                    self.displayBoard(self.board)
+
+                pygame.display.update()
+
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.running = False
+                        self.exit = True
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE and not self.endgame:
+                            self.pause = not self.pause
+                    if event.type == pygame.MOUSEBUTTONDOWN and not self.pause and not self.endgame:
+                        pos = pygame.mouse.get_pos()
+                        coords = ((int)(pos[0] / self.gridSize[0]), (int)(pos[1] / self.gridSize[1]))
+                        if event.button == 1:
+                            if not self.board.board[coords[1]][coords[0]].flagged:
+                                self.reveal(coords[0], coords[1])
+                                # if self.board.board[coords[1]][coords[0]].bomb:
+                                #     self.board.board[coords[1]][coords[0]].revealed = True
+                                #     self.displayBombs(self.board)
+                                #     self.displayEndgame(False)
+                                #     self.endgame = True
+                                # if not self.board.board[coords[1]][coords[0]].revealed:
+                                #     self.board.board[coords[1]][coords[0]].revealed = True
+                                #     self.board.cellsLeft -= 1
+                                #     if self.board.board[coords[1]][coords[0]].nearbyBombs == 0:
+                                #         self.board.revealZeros(coords[0], coords[1])
+                        if event.button == 3:
+                            if not self.board.board[coords[1]][coords[0]].revealed:
+                                if self.board.board[coords[1]][coords[0]].flagged:
+                                    self.board.board[coords[1]][coords[0]].flagged = not \
+                                        self.board.board[coords[1]][coords[0]].flagged
+                                    self.board.flags += 1
+                                elif self.board.flags > 0:
+                                    self.board.board[coords[1]][coords[0]].flagged = not \
+                                        self.board.board[coords[1]][coords[0]].flagged
+                                    self.board.flags -= 1
+                    if event.type == pygame.MOUSEBUTTONDOWN and self.pause:
+                        pos = pygame.mouse.get_pos()
+                        if event.button == 1:
+                            if self.center[0] - self.buttonWidth / 2 <= pos[0] <= self.center[0] + self.buttonWidth / 2:
+                                if self.center[1] - self.buttonHeight / 2 - (
+                                        self.buttonHeight + self.distBetweenButtons) <= pos[1] \
+                                        <= self.center[1] - self.buttonHeight / 2 - self.distBetweenButtons:  # resume
+                                    self.pause = False
+                                if self.center[1] - self.buttonHeight / 2 <= pos[1] <= self.center[
+                                    1] + self.buttonHeight / 2:  # restart
+                                    self.board.randomizeBoard(self.difficultySettings[self.difficulty][0],
+                                                              self.difficultySettings[self.difficulty][1],
+                                                              self.difficultySettings[self.difficulty][2])
+                                    self.pause = False
+                                if self.center[1] + self.buttonHeight / 2 + self.distBetweenButtons <= pos[1] \
+                                        <= self.center[
+                                    1] + 3 * self.buttonHeight / 2 + self.distBetweenButtons:  # back to menu
+                                    self.running = False
+                                    self.pause = False
+                    if event.type == pygame.MOUSEBUTTONDOWN and self.endgame:
+                        pos = pygame.mouse.get_pos()
+                        if event.button == 1:
+                            if self.center[0] - self.buttonWidth / 2 <= pos[0] <= self.center[0] + self.buttonWidth / 2:
+                                if self.center[1] + self.buttonHeight / 2 + self.distBetweenButtons <= pos[1] \
+                                        <= self.center[
+                                    1] + 3 * self.buttonHeight / 2 + self.distBetweenButtons:  # back to menu
+                                    self.running = False
+                                    self.endgame = False
