@@ -1,6 +1,7 @@
 import neat.nn
 import pygame
 import Board
+import copy
 
 
 # implement ai
@@ -12,9 +13,9 @@ class game:
 
         self.backgroundColor = (200, 200, 200)
 
-        self.cols = 4
-        self.rows = 4
-        self.bombs = 2
+        self.cols = 9
+        self.rows = 9
+        self.bombs = 12
 
         self.difficultySettings = {
             'easy': (10, 8, 10),
@@ -25,8 +26,8 @@ class game:
 
         self.difficulty = 'custom'
 
-        self.width = 1920
-        self.height = 1080
+        self.width = 700
+        self.height = 500
         self.gridSize = (self.width / self.cols, self.height / self.rows)
 
         self.buttonWidth = 300
@@ -210,7 +211,58 @@ class game:
             if self.board.board[y][x].nearbyBombs == 0:
                 self.board.revealZeros(x, y)
             return True
+        # print('invalid')
         return False
+
+    def test_ai_win(self, genome, config, games, display=False, delay=True):
+        net = neat.nn.FeedForwardNetwork.create(genome, config)
+        wins = 0
+        games_played = 0
+        while games_played < games:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    quit()
+
+            self.displayBoard(self.board)
+
+            input = []
+
+            for row in self.board.board:
+                for cell in row:
+                    input.append((cell.nearbyBombs if cell.revealed else -1))
+
+            output = net.activate(input)
+            lst = [i for i in range(len(output))]
+            unrevealed_squares = list(zip(lst, output))  # make this a list of tuples
+
+            ind_to_pop = []
+            for i in range(len(output)):  # leaves only the unrevealed squares to pick from
+                if self.board.board[int(i / self.board.height)][i % self.board.width].revealed:
+                    ind_to_pop.append(i)
+            for ind in reversed(ind_to_pop):
+                unrevealed_squares.pop(ind)
+
+            pick = min((out, ind) for ind, out in unrevealed_squares)  # instead of using index, we use the tuples
+            # print(pick[1])
+
+            if not self.endgame:
+                print(f'cells left: {self.board.cellsLeft} unrevealed_squares: {len(unrevealed_squares)}')
+                print(f'index: {pick[1]} x: {pick[1] % self.board.width} y: {int(pick[1] / self.board.height)}')
+            self.reveal(pick[1] % self.board.width, int(pick[1] / self.board.height))
+            if self.board.checkWin():
+                self.endgame = True
+                wins += 1
+            if self.endgame:
+                games_played += 1
+                self.endgame = False
+                self.board.randomizeBoard(self.difficultySettings[self.difficulty][0],
+                                          self.difficultySettings[self.difficulty][1],
+                                          self.difficultySettings[self.difficulty][2])
+            if display:
+                pygame.display.update()
+                if delay:
+                    pygame.time.wait(500)
+        return wins / games
 
     def test_ai(self, genome, config):
         net = neat.nn.FeedForwardNetwork.create(genome, config)
@@ -220,76 +272,111 @@ class game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     quit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE and not self.endgame:
+                        self.pause = not self.pause
 
-            # if not self.pause and not self.endgame:
-            #     self.screen.fill(self.backgroundColor)
-            if self.board.checkWin():
-                print('Winner Winner Chicken Dinner!')
-                break
-            self.displayBoard(self.board)
+            if not self.pause:
+                self.displayBoard(self.board)
 
-            input = []
+                input = []
 
-            for row in self.board.board:
-                for cell in row:
-                    input.append((cell.nearbyBombs if not cell.revealed else -1))
+                for row in self.board.board:
+                    for cell in row:
+                        input.append((cell.nearbyBombs if cell.revealed else -1))
 
-            output = net.activate(input)
-            bomb = not self.reveal(round(self.translate(output[0], 0, 1, 0, 3)),
-                                   round(self.translate(output[1], 0, 1, 0, 3)))
-            if bomb:
-                print('Hit a bomb :(')
-                break
+                output = net.activate(input)
+                lst = [i for i in range(len(output))]
+                unrevealed_squares = list(zip(lst, output))  # make this a list of tuples
 
-            pygame.display.update()
+                ind_to_pop = []
+                for i in range(len(output)):  # leaves only the unrevealed squares to pick from
+                    if self.board.board[int(i / self.board.height)][i % self.board.width].revealed:
+                        ind_to_pop.append(i)
+                for ind in reversed(ind_to_pop):
+                    unrevealed_squares.pop(ind)
+
+                pick = min((out, ind) for ind, out in unrevealed_squares)  # instead of using index, we use the tuples
+                print(pick[1])
+
+                if not self.endgame:
+                    print(f'cells left: {self.board.cellsLeft} unrevealed_squares: {len(unrevealed_squares)}')
+                    print(f'index: {pick[1]} x: {pick[1] % self.board.width} y: {int(pick[1] / self.board.height)}')
+                self.reveal(pick[1] % self.board.width, int(pick[1] / self.board.height))
+                if self.endgame:
+                    fitness_delta = 0
+                    for row in self.board.board:
+                        for cell in row:
+                            if cell.revealed:
+                                if cell.bomb:
+                                    fitness_delta -= 50  # will be multiplied by 2 because there are 2 bombs, so basically erases winning one game
+                                else:
+                                    fitness_delta += cell.nearbyBombs + 1
+                    print(f'fitness_delta:{fitness_delta}')
+                    pygame.display.update()
+                    while True:
+                        for event in pygame.event.get():
+                            if event.type == pygame.QUIT:
+                                quit()
+
+                pygame.display.update()
+                pygame.time.wait(500)
 
     def train_ai(self, genome, config):
         net = neat.nn.FeedForwardNetwork.create(genome, config)
 
-        run = True
-        while run:
+        guesses = 0
+        predicted = 0
+
+        while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     quit()
 
-            # if not self.pause and not self.endgame:
-            #     self.screen.fill(self.backgroundColor)
-            if self.board.checkWin():
-                # print('Winner Winner Chicken Dinner!')
-                self.calculate_fitness(genome)
-                break
             self.displayBoard(self.board)
 
             input = []
 
             for row in self.board.board:
                 for cell in row:
-                    input.append((cell.nearbyBombs if not cell.revealed else -1))
+                    input.append((cell.nearbyBombs if cell.revealed else -1))
 
             output = net.activate(input)
-            # print(output)
-            # print(round(self.translate(output[0],0,1,0,3)), round(self.translate(output[1],0,1,0,3)))
-            bomb = not self.reveal(round(self.translate(output[0],0,1,0,3)), round(self.translate(output[1],0,1,0,3)))
-            if bomb:
-                # print('Hit a bomb :(')
-                self.calculate_fitness(genome)
+            lst = [i for i in range(len(output))]
+            unrevealed_squares = list(zip(lst, output))  # make this a list of tuples
+
+            ind_to_pop = []
+            for i in range(len(output)):  # leaves only the unrevealed squares to pick from
+                if self.board.board[int(i / self.board.height)][i % self.board.width].revealed:
+                    ind_to_pop.append(i)
+            for ind in reversed(ind_to_pop):
+                unrevealed_squares.pop(ind)
+
+            pick = min((out, ind) for ind, out in unrevealed_squares)  # instead of using index, we use the tuples
+
+            hit_bomb = not self.reveal(pick[1] % self.board.width, int(pick[1] / self.board.height))
+
+            if self.board.checkWin():
+                self.calculate_fitness(genome, True, guesses, predicted)
                 break
 
-            pygame.display.update()
+            if hit_bomb:
+                self.calculate_fitness(genome, False, guesses, predicted)
+                break
 
-    def calculate_fitness(self, genome):
-        genome.fitness += (self.board.width * self.board.height - self.board.numBombs) - self.board.cellsLeft #fitness will be the number of cells successfully revealed
+            # pygame.display.update()
+            # pygame.time.wait(250)
 
-    def translate(self, value, leftMin, leftMax, rightMin, rightMax):
-        # Figure out how 'wide' each range is
-        leftSpan = leftMax - leftMin
-        rightSpan = rightMax - rightMin
-
-        # Convert the left range into a 0-1 range (float)
-        valueScaled = float(value - leftMin) / float(leftSpan)
-
-        # Convert the 0-1 range into a value in the right range.
-        return rightMin + (valueScaled * rightSpan)
+    def calculate_fitness(self, genome, won, guesses, predicted):
+        fitness_delta = 0
+        for row in self.board.board:
+            for cell in row:
+                if cell.revealed and not cell.bomb:
+                    fitness_delta += cell.nearbyBombs
+        fitness_delta += 100 if won else -50
+        fitness_delta -= guesses
+        fitness_delta += predicted
+        genome.fitness += fitness_delta
 
     def loop(self):
         while not self.exit:
